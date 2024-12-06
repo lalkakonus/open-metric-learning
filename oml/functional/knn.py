@@ -59,6 +59,13 @@ def batched_knn_qg(
     distances = []
     gt_ids = []
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cpu_device = torch.device("cpu")
+    embeddings_query = embeddings_query.to(device)
+    embeddings_gallery = embeddings_gallery.to(device)
+    ids_query = ids_query.to(device)
+    ids_gallery = ids_gallery.to(device)
+
     # we do batching over first (queries) dimension
     items = tqdm(range(0, nq, bs), desc="Finding nearest neighbors.") if verbose else range(0, nq, bs)
     for i in items:
@@ -85,6 +92,9 @@ def batched_knn_qg(
         distances_b[mask_to_ignore_b] = float("inf")
         distances_b_sorted, retrieved_ids_b = torch.topk(distances_b, k=top_n, largest=False, sorted=True)
 
+        distances_b_sorted = distances_b_sorted.to(cpu_device)
+        retrieved_ids_b    = retrieved_ids_b.to(cpu_device)
+        
         # every query may have arbitrary number of retrieved items, so we are forced to use a loop to store the results
         for dist, ids in zip(distances_b_sorted, retrieved_ids_b):
             mask_to_keep = ~dist.isinf()
